@@ -1,0 +1,15 @@
+.navBar{
+    display: flex;
+    justify-content: right;
+    list-style-type: none;
+}
+.navBar > li {
+    border: 1px solid black;
+    margin: 5px;
+    padding: 10px;
+    border-radius: 10px;
+}
+.navBar > li > a {
+    padding: 10px;
+    text-decoration: none;
+}
