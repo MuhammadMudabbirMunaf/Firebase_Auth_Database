@@ -1,78 +1,165 @@
-// import React from "react";
-// import ReactDOM from 'react-dom';
-// import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-// import { faThumbsUp, faComment, faShare } from '@fortawesome/free-solid-svg-icons';
-// import "./home.css";
+import { useState, useEffect } from "react";
+import moment from 'moment';
 
-// function Home() {
-
-//     let Post = ({ profilePhoto, names, postDate, postImage, postText }) => (
-//         // ES6 coding of FB posts   
-//         <div className="post">
-//             <div className="postHeader">
-//                 <img className="postPics" src={profilePhoto} alt="profile pic" />
-//                 <div className="postName">
-//                     {names} <br />
-//                     {postDate}
-//                 </div>
-//             </div>
-
-//             <div className="postText">
-//                 {postText}
-//             </div>
-
-//             <img className="postImage" src={postImage} alt="postImg" />
-//             <hr />
-
-//             <div className="postFooter">
-//                 <div><FontAwesomeIcon icon={faThumbsUp} /> Like </div>
-//                 <div><FontAwesomeIcon icon={faComment} /> Comment </div>
-//                 <div><FontAwesomeIcon icon={faShare} /> Share </div>
-//             </div>
-//             <hr />
-//         </div>
-//     );
-
-
-//     let Page = () => (
-//         <div className="page">
-//             <Post names="Mudabbir"
-//                 profilePhoto="https://832431.smushcdn.com/1688923/wp-content/uploads/2022/06/Melbourne-Branding-Photography_professional_headshots-Huss-52-3-web.jpg?lossy=1&strip=1&webp=1"
-//                 postDate="14 Aug 2022"
-//                 postImage="https://cdn.mainstreethost.com/wp-content/uploads/2021/02/social-media-image-size-cheat-sheet-800x600.jpg"
-//                 postText="A local exploit requires prior access to the vulnerable system and usually increases the privileges of the person running the exploit past those granted by the system administrator."
-//             />
-//             <Post names="Fahad"
-//                 profilePhoto="https://images.squarespace-cdn.com/content/v1/5521b031e4b06ebe90178744/1560360135937-3YXVZ3124L1YL2FOASSQ/headshots-linkedin-photographer.jpg?format=1000w"
-//                 postDate="15 Aug 2022"
-//                 postImage="https://d1csarkz8obe9u.cloudfront.net/posterpreviews/zoom-online-classes-facebook-share-post-design-template-19bf316d9320014a24eb94177276c65c_screen.jpg?ts=1594918098"
-//                 postText="A local exploit requires prior access to the vulnerable system and usually increases the privileges of the person running the exploit past those granted by the system administrator."
-//             />
-//             <Post names="Uzair"
-//                 profilePhoto="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT4KJBSqkkxcDLLF1KJv4smptrlNmESFpjktYoT16Z-Z9-XSmepQ3Dik-N98yXZBX17H5s&usqp=CAU"
-//                 postDate="16 Aug 2022"
-//                 postImage="https://www.designcap.com/res/template/medium/de69a9e3a7468daddd30aeb154d9268d/page0.jpg?t=1602654191"
-//                 postText="A local exploit requires prior access to the vulnerable system and usually increases the privileges of the person running the exploit past those granted by the system administrator."
-//             />
-//             <Post names="Hassan"
-//                 profilePhoto="https://i.pinimg.com/originals/6d/b7/68/6db768dd203091a75014a40fc9d75701.jpg"
-//                 postDate="17 Aug 2022"
-//                 postImage="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRlRBJG8hNpC7IAScfBs_2JA6jj6uRaeNDdxw&usqp=CAU"
-//                 postText="A local exploit requires prior access to the vulnerable system and usually increases the privileges of the person running the exploit past those granted by the system administrator."
-//             />
-//         </div>
-//     )
-//     ReactDOM.render(<Page />, document.querySelector("#root"));
-// }
-
-// export default Home;
+import {
+    getFirestore, collection, addDoc,
+    getDocs, doc, onSnapshot, query,
+    serverTimestamp, orderBy, deleteDoc, updateDoc
+} from "firebase/firestore";
+import "./home.css";
 
 function Home() {
+
+    const db = getFirestore();
+
+    //state variables or stateful components
+    const [postText, setPostText] = useState("");
+    const [posts, setPosts] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [editing, setEditing] = useState({ editingId: null, editingText: "" })
+
+
+    useEffect(() => {
+
+        // this is to get data only once. Afterwards, it is not used/stopped.
+        const getData = async () => {
+            const querySnapshot = await getDocs(collection(db, "posts"));
+
+            querySnapshot.forEach((doc) => {
+                console.log(`${doc.id} => `, doc.data());
+
+                setPosts((prev) => {
+                    let newArray = [...prev, doc.data()];
+                    return newArray
+                });
+
+            });
+        }
+        // getData();
+
+        let unsubscribe = null;
+        // this is to get real time data
+        const getRealtimeData = async () => {
+
+            const q = query(collection(db, "posts"), orderBy("createdOn", "desc"));
+
+            unsubscribe = onSnapshot(q, (querySnapshot) => {
+                const posts = [];
+
+                querySnapshot.forEach((doc) => {
+                    // posts.unshift(doc.data());
+                    // posts.push(doc.data());
+
+                    posts.push({ id: doc.id, ...doc.data() });
+
+                });
+
+                setPosts(posts);
+            });
+
+        }
+        getRealtimeData();
+
+        // Cleanup function / After leaving work or having a break, 
+        //                    work is also stopped/aborted
+        return () => {
+            unsubscribe();
+        }
+    }, [])
+
+    // when typed on keyboard and post button is clicked, 
+    // this function runs and send data to firebase firestore "posts" collection
+    const savePost = async (e) => {
+        e.preventDefault();
+
+        try {
+            const docRef = await addDoc(collection(db, "posts"), {
+                text: postText,
+                // createdOn: new Date().getTime(),
+                createdOn: serverTimestamp(),
+            });
+        } catch (e) {
+        }
+
+
+    }
+
+    const deletePost = async (postId) => {
+        await deleteDoc(doc(db, "posts", postId));
+    }
+
+    const updatePost = async (e) => {
+        e.preventDefault();
+
+        await updateDoc(doc(db, "posts", editing.editingId),
+            { text: editing.editingText });
+
+        setEditing({ editingId: null, editingText: "" })
+    }
+
+
     return (
         <div>
-            This is Home Page
+
+            <div className="searchBar">
+                <form onSubmit={savePost}>
+
+                    <textarea className="postBox" maxLength="80" type="text"
+                        placeholder="What's in your mind..."
+                        onChange={(e) => { setPostText(e.target.value) }} />
+
+                    <br />
+                    <button type="submit" className="searchBtn">Post..!</button>
+
+                </form>
+            </div>
+
+
+            <div>
+                {(isLoading) ? "loading..." : ""}
+
+                {posts.map((eachPost, i) => (
+                    <div className="post" key={i}>
+
+                        <h3 className="postHead" href={eachPost?.url}
+                            target="_blank" rel="noreferrer">
+
+                            {(eachPost.id === editing.editingId) ?
+                                <form onSubmit={updatePost}>
+
+                                    <input className="editBox" type="text" value={editing.editingText}
+                                        onChange={(e) => {
+                                            setEditing({ ...editing, editingText: e.target.value })
+                                        }}
+                                        maxLength="80" placeholder="please enter updated value" />
+
+                                    <button className="updateBtn" type="submit">Update</button>
+                                </form>
+                                :
+                                eachPost?.text}
+                        </h3>
+
+                        <span className="date">{moment((eachPost?.createdOn?.seconds) ?
+                            eachPost?.createdOn?.seconds * 1000 : undefined).format('Do MMMM, h:mm a')}
+                        </span>
+
+                        <br />
+                        <button className="delBtn"
+                            onClick={() => { deletePost(eachPost?.id) }}
+                        >Delete</button>
+
+                        {(editing.editingId === eachPost?.id) ? null :
+
+                            <button className="editBtn"
+                                onClick={() => { setEditing({ editingId: eachPost?.id, editingText: eachPost?.text }) }}
+                            >Edit</button>
+                        }
+
+                    </div>
+                ))}
+            </div>
         </div>
-    )
+    );
 }
 
 export default Home;

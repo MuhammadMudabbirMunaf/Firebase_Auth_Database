@@ -12,14 +12,15 @@ import Signup from "./components/signup";
 
 function App() {
 
+
   const [isLogin, setIsLogin] = useState(false);
   const [fullName, setFullName] = useState("");
 
 
   useEffect(() => {
     const auth = getAuth();
-    
-    console.log("auth.currentuser : ", auth.currentUser);
+
+    // console.log("auth.currentuser : ", auth.currentUser);
 
     setFullName(auth.currentUser);
 
@@ -38,11 +39,11 @@ function App() {
       }
 
     });
-    
+
     return () => {
       unSubscribe();
     }
-    
+
     // empty array used to run code only once
   }, []);
 
@@ -69,9 +70,7 @@ function App() {
             <li><Link to={'/about'}>About</Link></li>
             <li><Link to={'/gallery'}>Gallery</Link></li>
             <li><Link to={'/profile'}>Profile</Link></li>
-            <li>{ fullName }<button onClick={logoutHandler}>Log-Out</button></li>
-            
-
+            <li>{fullName}<button onClick={logoutHandler}>Log-Out</button></li>
           </ul>
           :
           <ul className='navBar'>
